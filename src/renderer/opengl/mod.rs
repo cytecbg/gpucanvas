@@ -62,8 +62,8 @@ impl OpenGl {
         gl::load_with(load_fn);
 
         let shader_defs = if antialias { "#define EDGE_AA 1" } else { "" };
-        let vert_shader_src = format!("#version 100\n{}\n{}", shader_defs, include_str!("opengl/main-vs.glsl"));
-        let frag_shader_src = format!("#version 100\n{}\n{}", shader_defs, include_str!("opengl/main-fs.glsl"));
+        let vert_shader_src = format!("#version 100\n{}\n{}", shader_defs, include_str!("main-vs.glsl"));
+        let frag_shader_src = format!("#version 100\n{}\n{}", shader_defs, include_str!("main-fs.glsl"));
 
         let vert_shader = Shader::new(&CString::new(vert_shader_src)?, gl::VERTEX_SHADER)?;
         let frag_shader = Shader::new(&CString::new(frag_shader_src)?, gl::FRAGMENT_SHADER)?;
