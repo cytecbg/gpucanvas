@@ -66,7 +66,7 @@ impl Default for FillRule {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Hash)]
 pub enum BlendFactor {
     Zero,
     One,
@@ -81,7 +81,7 @@ pub enum BlendFactor {
     SrcAlphaSaturate,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Hash)]
 pub enum CompositeOperation {
     SourceOver,
     SourceIn,
@@ -96,7 +96,7 @@ pub enum CompositeOperation {
     Xor,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Hash)]
 pub struct CompositeOperationState {
     src_rgb: BlendFactor,
     src_alpha: BlendFactor,
@@ -178,7 +178,7 @@ impl Default for LineJoin {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 struct State {
     composite_operation: CompositeOperationState,
     transform: Transform2D,
@@ -276,7 +276,7 @@ where
 
     /// Tells the renderer to execute all drawing commands and clears the current internal state
     ///
-    /// Call this at the end of rach frame.
+    /// Call this at the end of each frame.
     pub fn flush(&mut self) {
         self.renderer.render(&self.images, &self.verts, &self.commands);
         self.commands.clear();
@@ -394,12 +394,29 @@ where
     ) -> Result<ImageId, ErrorKind> {
         let src = src.into();
         let size = src.dimensions();
-
         let id = self.create_image_empty(size.0, size.1, src.format(), flags)?;
-
         self.images.update(&mut self.renderer, id, src, 0, 0)?;
-
         Ok(id)
+    }
+
+    pub fn get_image(&self, id: ImageId) -> Option<&T::Image> {
+        self.images.get(id)
+    }
+
+    pub fn get_image_mut(&mut self, id: ImageId) -> Option<&mut T::Image> {
+        self.images.get_mut(id)
+    }
+
+    pub fn realloc_image(
+        &mut self,
+        id: ImageId,
+        width: usize,
+        height: usize,
+        format: PixelFormat,
+        flags: ImageFlags,
+    ) -> Result<(), ErrorKind> {
+        let info = ImageInfo::new(flags, width, height, format);
+        self.images.realloc(&mut self.renderer, id, info)
     }
 
     /// Decode an image from file
@@ -446,13 +463,19 @@ where
         self.images.remove(&mut self.renderer, id);
     }
 
-    /// Returns the size in pixels of the image for the specified id.
-    pub fn image_size(&self, id: ImageId) -> Result<(usize, usize), ErrorKind> {
+    /// Returns image info
+    pub fn image_info(&self, id: ImageId) -> Result<ImageInfo, ErrorKind> {
         if let Some(info) = self.images.info(id) {
-            Ok((info.width(), info.height()))
+            Ok(info)
         } else {
             Err(ErrorKind::ImageIdNotFound)
         }
+    }
+
+    /// Returns the size in pixels of the image for the specified id.
+    pub fn image_size(&self, id: ImageId) -> Result<(usize, usize), ErrorKind> {
+        let info = self.image_info(id)?;
+        Ok((info.width(), info.height()))
     }
 
     // Transforms

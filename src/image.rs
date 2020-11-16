@@ -15,7 +15,7 @@ use crate::{ErrorKind, Renderer};
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct ImageId(pub Index);
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum PixelFormat {
     Rgb8,
     Rgba8,
@@ -33,7 +33,7 @@ bitflags! {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 #[non_exhaustive]
 pub enum ImageSource<'a> {
     Rgb(ImgRef<'a, RGB8>),
@@ -62,19 +62,19 @@ impl ImageSource<'_> {
 
 impl<'a> From<ImgRef<'a, RGB8>> for ImageSource<'a> {
     fn from(src: ImgRef<'a, RGB8>) -> Self {
-        ImageSource::Rgb(src)
+        Self::Rgb(src)
     }
 }
 
 impl<'a> From<ImgRef<'a, RGBA8>> for ImageSource<'a> {
     fn from(src: ImgRef<'a, RGBA8>) -> Self {
-        ImageSource::Rgba(src)
+        Self::Rgba(src)
     }
 }
 
 impl<'a> From<ImgRef<'a, GRAY8>> for ImageSource<'a> {
     fn from(src: ImgRef<'a, GRAY8>) -> Self {
-        ImageSource::Gray(src)
+        Self::Gray(src)
     }
 }
 
@@ -105,7 +105,7 @@ impl<'a> TryFrom<&'a DynamicImage> for ImageSource<'a> {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct ImageInfo {
     flags: ImageFlags,
     width: usize,
@@ -163,6 +163,25 @@ impl<T> ImageStore<T> {
         Ok(ImageId(self.0.insert((info, image))))
     }
 
+    ///
+    /// Reallocates the image without changing the id.
+    ///
+    pub fn realloc<R: Renderer<Image = T>>(
+        &mut self,
+        renderer: &mut R,
+        id: ImageId,
+        info: ImageInfo,
+    ) -> Result<(), ErrorKind> {
+        if let Some(old) = self.0.get_mut(id.0) {
+            let new = renderer.alloc_image(info)?;
+            old.0 = info;
+            old.1 = new;
+            Ok(())
+        } else {
+            Err(ErrorKind::ImageIdNotFound)
+        }
+    }
+
     pub fn get(&self, id: ImageId) -> Option<&T> {
         self.0.get(id.0).map(|inner| &inner.1)
     }
@@ -181,11 +200,10 @@ impl<T> ImageStore<T> {
     ) -> Result<(), ErrorKind> {
         if let Some(image) = self.0.get_mut(id.0) {
             renderer.update_image(&mut image.1, data, x, y)?;
+            Ok(())
         } else {
-            return Err(ErrorKind::ImageIdNotFound);
+            Err(ErrorKind::ImageIdNotFound)
         }
-
-        Ok(())
     }
 
     pub fn info(&self, id: ImageId) -> Option<ImageInfo> {

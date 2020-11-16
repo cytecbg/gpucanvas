@@ -86,7 +86,7 @@ struct RenderedGlyphId {
 
 impl RenderedGlyphId {
     fn new(glyph_index: u32, font_id: FontId, paint: &Paint, mode: RenderMode) -> Self {
-        RenderedGlyphId {
+        Self {
             glyph_index,
             font_id,
             size: (paint.font_size * 10.0).trunc() as u32,
@@ -142,7 +142,7 @@ impl ShapingId {
         let mut hasher = FnvHasher::default();
         word.hash(&mut hasher);
 
-        ShapingId {
+        Self {
             size: (paint.font_size * 10.0).trunc() as u32,
             word_hash: hasher.finish(),
             font_ids: paint.font_ids,
@@ -564,7 +564,7 @@ fn layout(x: f32, y: f32, context: &mut TextContext, res: &mut TextMetrics, pain
 
 // Renderer
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct DrawCmd {
     pub image_id: ImageId,
     pub quads: Vec<Quad>,
