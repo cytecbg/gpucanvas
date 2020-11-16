@@ -1,5 +1,7 @@
 # gpucanvas
 
+Development moved to https://github.com/femtovg/femtovg
+
 **Work in progress!**
 
 Antialiased 2D vector drawing library written in rust.
